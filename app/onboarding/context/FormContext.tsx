@@ -1,0 +1,168 @@
+'use client';
+
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+/**
+ * Generic form data type that can be extended for specific forms
+ */
+export interface FormData {
+  [key: string]: any;
+}
+
+/**
+ * Configuration for each form step
+ */
+export interface FormStep {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+/**
+ * Multi-step form context type
+ */
+export interface FormContextType {
+  // Step management
+  currentStep: number;
+  totalSteps: number;
+  currentStepId: string;
+  steps: FormStep[];
+
+  // Form data management
+  formData: FormData;
+  updateFormData: (data: Partial<FormData>) => void;
+  getStepData: (stepId: string) => FormData;
+
+  // Navigation
+  goToNextStep: () => void;
+  goToPreviousStep: () => void;
+  goToStep: (stepIndex: number) => void;
+  canGoNext: () => boolean;
+  canGoPrevious: () => boolean;
+
+  // Utilities
+  resetForm: () => void;
+  getCompletedSteps: () => number[];
+  markStepComplete: (stepIndex: number) => void;
+}
+
+// Create the context
+const FormContext = createContext<FormContextType | undefined>(undefined);
+
+/**
+ * Form context provider component
+ */
+export function FormProvider({
+  children,
+  steps,
+  initialData = {},
+}: {
+  children: ReactNode;
+  steps: FormStep[];
+  initialData?: FormData;
+}) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState<FormData>(initialData);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+
+  const totalSteps = steps.length;
+  const currentStepId = steps[currentStep]?.id || '';
+
+  /**
+   * Update form data
+   */
+  const updateFormData = (data: Partial<FormData>) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...data,
+    }));
+  };
+
+  /**
+   * Get data for a specific step
+   */
+  const getStepData = (stepId: string): FormData => {
+    // You can customize this to filter data by step if needed
+    return formData;
+  };
+
+  /**
+   * Navigation functions
+   */
+  const goToNextStep = () => {
+    if (currentStep < totalSteps - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const goToPreviousStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const goToStep = (stepIndex: number) => {
+    if (stepIndex >= 0 && stepIndex < totalSteps) {
+      setCurrentStep(stepIndex);
+    }
+  };
+
+  const canGoNext = () => currentStep < totalSteps - 1;
+  const canGoPrevious = () => currentStep > 0;
+
+  /**
+   * Mark a step as completed
+   */
+  const markStepComplete = (stepIndex: number) => {
+    setCompletedSteps((prev) => new Set([...prev, stepIndex]));
+  };
+
+  /**
+   * Get list of completed steps
+   */
+  const getCompletedSteps = () => Array.from(completedSteps);
+
+  /**
+   * Reset the entire form
+   */
+  const resetForm = () => {
+    setCurrentStep(0);
+    setFormData(initialData);
+    setCompletedSteps(new Set());
+  };
+
+  const value: FormContextType = {
+    currentStep,
+    totalSteps,
+    currentStepId,
+    steps,
+    formData,
+    updateFormData,
+    getStepData,
+    goToNextStep,
+    goToPreviousStep,
+    goToStep,
+    canGoNext,
+    canGoPrevious,
+    resetForm,
+    getCompletedSteps,
+    markStepComplete,
+  };
+
+  return (
+    <FormContext.Provider value={value}>
+      {children}
+    </FormContext.Provider>
+  );
+}
+
+/**
+ * Hook to use the form context
+ */
+export function useFormContext(): FormContextType {
+  const context = useContext(FormContext);
+  if (!context) {
+    throw new Error('useFormContext must be used within a FormProvider');
+  }
+  return context;
+}

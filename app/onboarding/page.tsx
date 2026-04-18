@@ -1,8 +1,9 @@
-export default function Page(){
+import MultistepForm from "./components/MultistepForm";
 
-    return (
-        <main className="min-h-screen md:p-8 sm:p-6 p-4 ">
-            This is a user onboarding
-        </main>
-    )
+export default function Page() {
+  return (
+    <main className="min-h-screen flex justify-center items-center bg-background p-4 sm:p-6 md:p-8">
+      <MultistepForm />
+    </main>
+  );
 }
