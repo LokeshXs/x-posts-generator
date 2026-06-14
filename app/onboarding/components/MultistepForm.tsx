@@ -8,9 +8,11 @@ import { InspirationStep } from "./InspirationStep";
 import { ScheduleStep } from "./ScheduleStep";
 import { OnboardingDone } from "./OnboardingDone";
 import { ConnectXStep } from "./ConnectXStep";
+import { AnalyzeXStep } from "./AnalyzeXStep";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { validateCurrentStep } from "../utils/formValidators";
+import { getErrorMessage } from "../utils/getErrorMessage";
 import { saveUserPreferences } from "@/lib/services/preferences";
 import type { FormStep } from "../context/FormContext";
 import type { OnboardingStatusSteps } from "@/lib/services/onboarding-status";
@@ -21,6 +23,11 @@ const FORM_STEPS: FormStep[] = [
     id: "connect-x",
     title: "Connect your X account",
     description: "Import your recent posts to personalize your content",
+  },
+  {
+    id: "analyze-x",
+    title: "Analyzing your style",
+    description: "We're learning your voice from your recent posts",
   },
   {
     id: "niche",
@@ -63,6 +70,8 @@ export default function MultistepForm({
       initialData={{
         niche: [], // selected topics
         postType: [], // selected post types
+        suggestedNiches: [], // niche chips from the X analysis (falls back to defaults)
+        suggestedPostTypes: [], // post-type chips from the X analysis (falls back to defaults)
         inspirationAccounts: [], // X usernames to take inspiration from
 
         postsPerDay: "1",
@@ -109,10 +118,8 @@ function MultistepFormContent() {
         postsPerDay: formData.postsPerDay,
         deliveryTime: formData.deliveryTime,
       });
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error ?? "Something went wrong. Please try again.",
-      );
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Something went wrong. Please try again."));
       setIsSubmitting(false);
       return;
     }
@@ -130,43 +137,47 @@ function MultistepFormContent() {
   }
 
   return (
-    <div className="flex flex-col gap-8 container mx-auto max-w-2/3 w-full">
-      {/* Step content */}
-      <Card>
-        <CardHeader>
-          <div className="text-xs text-muted-foreground font-medium">
-            STEP {currentStep + 1} OF {totalSteps}
-          </div>
-        </CardHeader>
-        <CardContent>
+    <div className="flex flex-col gap-8 mx-auto w-full max-w-6xl">
+      {/* Step content. The analyze step is an immersive, self-advancing moment,
+          so it renders without the step-counter header or footer navigation.
+          A shared min-height keeps the card from resizing between steps. */}
+      <Card className="min-h-[26rem] sm:min-h-[32rem] w-full ">
+        {currentStepId !== "analyze-x" && (
+          <CardHeader>
+            <div className="text-xs text-muted-foreground font-medium text-center sm:text-left">
+              STEP {currentStep + 1} OF {totalSteps}
+            </div>
+          </CardHeader>
+        )}
+        <CardContent className=" flex-1 flex items-center justify-center w-full">
           <FormStepContent />
         </CardContent>
       </Card>
 
       {/* Step counter and navigation */}
       {error && <p className="text-sm text-destructive text-center">{error}</p>}
-      <div className="flex items-center justify-between">
-        {canGoPrevious() ? (
-          <Button variant="outline" onClick={goToPreviousStep}>
-            Back
+      {currentStepId !== "analyze-x" && (
+        <div className="flex items-center justify-between">
+          {canGoPrevious() ? (
+            <Button variant="outline" onClick={goToPreviousStep}>
+              Back
+            </Button>
+          ) : (
+            <div />
+          )}
+         
+          <Button
+            onClick={FormSubmissionHandler}
+            disabled={!isCurrentStepValid || isSubmitting}
+          >
+            {currentStepId === "schedule"
+              ? isSubmitting
+                ? "Saving…"
+                : "Save"
+              : "Continue →"}
           </Button>
-        ) : (
-          <div />
-        )}
-        <span className="text-sm text-muted-foreground">
-          {currentStep + 1} / {totalSteps}
-        </span>
-        <Button
-          onClick={FormSubmissionHandler}
-          disabled={!isCurrentStepValid || isSubmitting}
-        >
-          {currentStepId === "schedule"
-            ? isSubmitting
-              ? "Saving…"
-              : "Save"
-            : "Continue →"}
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -178,12 +189,14 @@ function FormStepContent() {
     case 0:
       return <ConnectXStep />;
     case 1:
-      return <NicheStep />;
+      return <AnalyzeXStep />;
     case 2:
-      return <PostTypeStep />;
+      return <NicheStep />;
     case 3:
-      return <InspirationStep />;
+      return <PostTypeStep />;
     case 4:
+      return <InspirationStep />;
+    case 5:
       return <ScheduleStep />;
     default:
       return <ConnectXStep />;

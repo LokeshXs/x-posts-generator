@@ -4,12 +4,14 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { z } from 'zod'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Separator } from '@/components/ui/separator'
 import { signIn } from '@/lib/supabase/auth-service'
 import { useAuthGuard } from '@/hooks/useAuthGuard'
+import { GoogleButton } from '../components/GoogleButton'
+import { PasswordInput } from '../components/PasswordInput'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -67,63 +69,67 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to your account to continue</CardDescription>
-        </CardHeader>
+    <div className="w-full">
+      <div className="mb-8 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in to your account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Welcome back! Please enter your details.
+        </p>
+      </div>
 
-        <form onSubmit={handleSubmit} noValidate>
-          <CardContent>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={fields.email}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                />
-                <FieldError>{fieldErrors.email}</FieldError>
-              </Field>
+      <form onSubmit={handleSubmit} noValidate>
+        <FieldGroup className="gap-5">
+          <Field>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={fields.email}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            <FieldError>{fieldErrors.email}</FieldError>
+          </Field>
 
-              <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={fields.password}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                />
-                <FieldError>{fieldErrors.password}</FieldError>
-              </Field>
+          <Field>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <PasswordInput
+              id="password"
+              name="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={fields.password}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            <FieldError>{fieldErrors.password}</FieldError>
+          </Field>
 
-              {formError && <FieldError>{formError}</FieldError>}
-            </FieldGroup>
-          </CardContent>
+          {formError && <FieldError>{formError}</FieldError>}
 
-          <CardFooter className="flex flex-col gap-3">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
-            </Button>
-            <p className="text-sm text-muted-foreground text-center">
-              Don&apos;t have an account?{' '}
-              <Link href="/register" className="underline underline-offset-4 hover:text-primary">
-                Sign up
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Signing in…' : 'Sign in'}
+          </Button>
+        </FieldGroup>
+      </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs text-muted-foreground">OR</span>
+        <Separator className="flex-1" />
+      </div>
+
+      <GoogleButton redirectTo={redirectTo} />
+
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{' '}
+        <Link href="/register" className="font-medium text-foreground hover:text-primary">
+          Sign up
+        </Link>
+      </p>
     </div>
   )
 }

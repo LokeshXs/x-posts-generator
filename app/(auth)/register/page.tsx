@@ -4,12 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { z } from 'zod'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Separator } from '@/components/ui/separator'
 import { signUp } from '@/lib/supabase/auth-service'
 import { useAuthGuard } from '@/hooks/useAuthGuard'
+import { GoogleButton } from '../components/GoogleButton'
+import { PasswordInput } from '../components/PasswordInput'
 
 const registerSchema = z
   .object({
@@ -76,78 +78,81 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create an account</CardTitle>
-          <CardDescription>Start generating your X posts today</CardDescription>
-        </CardHeader>
+    <div className="w-full">
+      <div className="mb-8 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Start generating your X posts today.
+        </p>
+      </div>
 
-        <form onSubmit={handleSubmit} noValidate>
-          <CardContent>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={fields.email}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                />
-                <FieldError>{fieldErrors.email}</FieldError>
-              </Field>
+      <form onSubmit={handleSubmit} noValidate>
+        <FieldGroup className="gap-5">
+          <Field>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={fields.email}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            <FieldError>{fieldErrors.email}</FieldError>
+          </Field>
 
-              <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={fields.password}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                />
-                <FieldError>{fieldErrors.password}</FieldError>
-              </Field>
+          <Field>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <PasswordInput
+              id="password"
+              name="password"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              value={fields.password}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            <FieldError>{fieldErrors.password}</FieldError>
+          </Field>
 
-              <Field>
-                <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={fields.confirmPassword}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                />
-                <FieldError>{fieldErrors.confirmPassword}</FieldError>
-              </Field>
+          <Field>
+            <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              value={fields.confirmPassword}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+            <FieldError>{fieldErrors.confirmPassword}</FieldError>
+          </Field>
 
-              {formError && <FieldError>{formError}</FieldError>}
-            </FieldGroup>
-          </CardContent>
+          {formError && <FieldError>{formError}</FieldError>}
 
-          <CardFooter className="flex flex-col gap-3">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating account…' : 'Create account'}
-            </Button>
-            <p className="text-sm text-muted-foreground text-center">
-              Already have an account?{' '}
-              <Link href="/login" className="underline underline-offset-4 hover:text-primary">
-                Sign in
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating account…' : 'Create account'}
+          </Button>
+        </FieldGroup>
+      </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs text-muted-foreground">OR</span>
+        <Separator className="flex-1" />
+      </div>
+
+      <GoogleButton />
+
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        Already have an account?{' '}
+        <Link href="/login" className="font-medium text-foreground hover:text-primary">
+          Sign in
+        </Link>
+      </p>
     </div>
   )
 }

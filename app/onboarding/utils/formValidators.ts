@@ -42,7 +42,7 @@ export const validateCurrentStep = (stepId: string, data: FormData): boolean => 
   try {
     schema.parse(data);
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 };

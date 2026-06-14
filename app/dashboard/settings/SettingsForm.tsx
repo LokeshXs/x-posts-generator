@@ -1,0 +1,414 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { IconCheck, IconPlus, IconX } from '@tabler/icons-react'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { TimePicker } from '@/components/ui/time-picker'
+import { cn } from '@/lib/utils'
+import {
+  updateUserPreferences,
+  type UserPreferences,
+} from '@/lib/services/preferences'
+import { BASE_POST_TYPES } from '@/lib/constants/post-types'
+import { isAxiosError } from 'axios'
+
+const POSTS_PER_DAY_OPTIONS = [
+  { value: '1', label: '1 post / day' },
+  { value: '2', label: '2 posts / day' },
+  { value: '3', label: '3 posts / day' },
+  { value: '4', label: '4 posts / day' },
+  { value: '5', label: '5 posts / day' },
+]
+
+const USERNAME_REGEX = /^[A-Za-z0-9_]{1,15}$/
+
+function arrayEquals(a: string[], b: string[]) {
+  if (a.length !== b.length) return false
+  const sa = [...a].sort()
+  const sb = [...b].sort()
+  return sa.every((v, i) => v === sb[i])
+}
+
+type SectionProps = {
+  title: string
+  description: string
+  children: React.ReactNode
+}
+
+function Section({ title, description, children }: SectionProps) {
+  return (
+    <section className="grid gap-6 py-8 md:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] md:gap-12">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base font-medium tracking-tight">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex flex-col gap-4">{children}</div>
+    </section>
+  )
+}
+
+type ChipProps = {
+  label: string
+  selected: boolean
+  onClick: () => void
+}
+
+function Chip({ label, selected, onClick }: ChipProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-all',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+        selected
+          ? 'border-foreground bg-foreground text-background hover:bg-foreground/90'
+          : 'border-border bg-background text-foreground hover:bg-muted',
+      )}
+    >
+      {selected && <IconCheck className="size-3.5" />}
+      {label}
+    </button>
+  )
+}
+
+type SettingsFormProps = {
+  initialPreferences: UserPreferences
+  // Full list of niche options to render — comes entirely from the API. When
+  // empty we show an error in the Niche section rather than a hardcoded list.
+  suggestedNiches: string[]
+}
+
+export function SettingsForm({
+  initialPreferences,
+  suggestedNiches,
+}: SettingsFormProps) {
+  const [prefs, setPrefs] = useState<UserPreferences>(initialPreferences)
+  // Baseline we diff against for the dirty state. Re-set after a successful
+  // save so the dirty bar hides and the next edit is detected correctly.
+  const [baseline, setBaseline] = useState<UserPreferences>(initialPreferences)
+  const [draftAccount, setDraftAccount] = useState('')
+  const [accountError, setAccountError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+
+  // Auto-dismiss the "Preferences saved" toast 2.5s after a successful save.
+  useEffect(() => {
+    if (savedAt === null) return
+    const id = setTimeout(() => setSavedAt(null), 2500)
+    return () => clearTimeout(id)
+  }, [savedAt])
+
+  const isDirty = useMemo(() => {
+    return (
+      !arrayEquals(prefs.niche, baseline.niche) ||
+      !arrayEquals(prefs.postType, baseline.postType) ||
+      !arrayEquals(prefs.inspirationAccounts, baseline.inspirationAccounts) ||
+      prefs.postsPerDay !== baseline.postsPerDay ||
+      prefs.deliveryTime !== baseline.deliveryTime
+    )
+  }, [prefs, baseline])
+
+  const toggle = (key: 'niche' | 'postType', value: string) => {
+    setPrefs((p) => {
+      const list = p[key]
+      const next = list.includes(value)
+        ? list.filter((v) => v !== value)
+        : [...list, value]
+      return { ...p, [key]: next }
+    })
+  }
+
+  const addAccount = () => {
+    const normalized = draftAccount.trim().replace(/^@+/, '')
+    if (!normalized) return
+    if (!USERNAME_REGEX.test(normalized)) {
+      setAccountError('Use 1–15 letters, numbers, or underscores.')
+      return
+    }
+    if (
+      prefs.inspirationAccounts.some(
+        (a) => a.toLowerCase() === normalized.toLowerCase(),
+      )
+    ) {
+      setAccountError('Already added.')
+      setDraftAccount('')
+      return
+    }
+    setPrefs((p) => ({
+      ...p,
+      inspirationAccounts: [...p.inspirationAccounts, normalized],
+    }))
+    setDraftAccount('')
+    setAccountError('')
+  }
+
+  const removeAccount = (name: string) => {
+    setPrefs((p) => ({
+      ...p,
+      inspirationAccounts: p.inspirationAccounts.filter((a) => a !== name),
+    }))
+  }
+
+  const handleSave = async () => {
+    // Match the API's "min 1 non-blank" rule client-side so the user gets
+    // immediate feedback without a round-trip.
+    if (prefs.niche.filter((n) => n.trim()).length === 0) {
+      setSaveError('Pick at least one niche.')
+      return
+    }
+    if (prefs.postType.filter((t) => t.trim()).length === 0) {
+      setSaveError('Pick at least one post type.')
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+    try {
+      const updated = await updateUserPreferences(prefs)
+      // Use the server's authoritative response as the new baseline so the
+      // form re-syncs if the API normalized anything (e.g. trimmed entries).
+      const next: UserPreferences = {
+        niche: updated.niche,
+        postType: updated.postType,
+        inspirationAccounts: updated.inspirationAccounts,
+        postsPerDay: updated.postsPerDay,
+        deliveryTime: updated.deliveryTime,
+      }
+      setPrefs(next)
+      setBaseline(next)
+      setSavedAt(Date.now())
+    } catch (err) {
+      // Pull the API's validation message ({ error: string }) on 400; the axios
+      // interceptor already handles 401. 404 means the row was deleted between
+      // load and save — rare, but surface a useful message rather than the
+      // raw "Preferences not found."
+      if (isAxiosError(err)) {
+        const status = err.response?.status
+        const apiMessage = err.response?.data?.error as string | undefined
+        if (status === 404) {
+          setSaveError('No saved preferences yet — finish onboarding first.')
+        } else if (status === 400 && apiMessage) {
+          setSaveError(apiMessage)
+        } else {
+          setSaveError("Couldn't save your preferences. Please try again.")
+        }
+      } else {
+        setSaveError("Couldn't save your preferences. Please try again.")
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleReset = () => {
+    setPrefs(baseline)
+    setAccountError('')
+    setSaveError('')
+    setDraftAccount('')
+  }
+
+  return (
+    <div className="relative pb-28">
+      <div className="divide-y divide-border">
+        <Section
+          title="Niche"
+          description="The topics we'll source trends and ideas from."
+        >
+          {suggestedNiches.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {suggestedNiches.map((topic) => (
+                <Chip
+                  key={topic}
+                  label={topic}
+                  selected={prefs.niche.includes(topic)}
+                  onClick={() => toggle('niche', topic)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-destructive">
+              We couldn&rsquo;t load niche options. Please refresh the page or try
+              again later.
+            </p>
+          )}
+        </Section>
+
+        <Section
+          title="Post types"
+          description="The kinds of posts we'll draft for you."
+        >
+          <div className="flex flex-wrap gap-2">
+            {BASE_POST_TYPES.map((type) => (
+              <Chip
+                key={type}
+                label={type}
+                selected={prefs.postType.includes(type)}
+                onClick={() => toggle('postType', type)}
+              />
+            ))}
+          </div>
+        </Section>
+
+        <Section
+          title="Inspiration"
+          description="X accounts we'll learn voice and style from."
+        >
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="@username"
+                value={draftAccount}
+                onChange={(e) => {
+                  setDraftAccount(e.target.value)
+                  if (accountError) setAccountError('')
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addAccount()
+                  }
+                }}
+                aria-invalid={!!accountError}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addAccount}
+                disabled={!draftAccount.trim()}
+              >
+                <IconPlus />
+                Add
+              </Button>
+            </div>
+            {accountError && (
+              <p className="text-sm text-destructive">{accountError}</p>
+            )}
+            {prefs.inspirationAccounts.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {prefs.inspirationAccounts.map((name) => (
+                  <Badge
+                    key={name}
+                    variant="secondary"
+                    className="gap-1 pl-2.5 pr-1"
+                  >
+                    @{name}
+                    <button
+                      type="button"
+                      onClick={() => removeAccount(name)}
+                      aria-label={`Remove @${name}`}
+                      className="-mr-0.5 ml-0.5 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    >
+                      <IconX className="size-3.5" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </Section>
+
+        <Section
+          title="Delivery"
+          description="How many drafts you get, and when."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="posts-per-day">Posts per day</Label>
+              <Select
+                value={prefs.postsPerDay}
+                onValueChange={(v) => {
+                  if (typeof v !== 'string') return
+                  setPrefs((p) => ({ ...p, postsPerDay: v }))
+                }}
+              >
+                <SelectTrigger id="posts-per-day">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {POSTS_PER_DAY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="delivery-time">Delivery time</Label>
+              <TimePicker
+                id="delivery-time"
+                value={prefs.deliveryTime}
+                onChange={(value) =>
+                  setPrefs((p) => ({ ...p, deliveryTime: value }))
+                }
+              />
+            </div>
+          </div>
+        </Section>
+      </div>
+
+      <div
+        className={cn(
+          'pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-all duration-300 ease-out',
+          isDirty
+            ? 'translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-4 opacity-0',
+        )}
+        aria-hidden={!isDirty}
+      >
+        <div className="pointer-events-auto flex w-full max-w-3xl flex-col gap-2 rounded-2xl border border-border bg-background/80 px-4 py-3 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:rounded-full sm:py-2">
+          <p
+            className={cn(
+              'text-center text-sm sm:text-left',
+              saveError ? 'text-destructive' : 'text-muted-foreground',
+            )}
+          >
+            {saveError || 'You have unsaved changes.'}
+          </p>
+          <div className="flex items-center gap-2 max-sm:w-full">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="max-sm:flex-1"
+            >
+              Reset
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="max-sm:flex-1"
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {savedAt && !isDirty && (
+        <div
+          key={savedAt}
+          className="fixed inset-x-0 bottom-6 z-20 mx-auto flex w-fit items-center gap-2 rounded-full border border-border bg-background/90 px-3.5 py-1.5 text-sm text-muted-foreground shadow-md backdrop-blur-md animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+        >
+          <IconCheck className="size-4 text-foreground" />
+          Preferences saved
+        </div>
+      )}
+    </div>
+  )
+}

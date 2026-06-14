@@ -26,6 +26,7 @@ export async function fetchOnboardingStatus(
       },
     );
     if (res.status === 401) return { kind: "unauthorized" };
+    console.log(res);
     if (!res.ok) return { kind: "error" };
     const data = (await res.json()) as OnboardingStatus;
     return { kind: "ok", data };
@@ -36,12 +37,12 @@ export async function fetchOnboardingStatus(
 
 // Maps an incomplete onboarding state to the step the user should resume on.
 // xAccount missing → step 0 (Connect X).
-// preferences missing → step 1 (Niche).
-// styleProfile missing → step 0, where ConnectXStep renders the "analyze posts" variant.
+// styleProfile missing → step 1 (Analyze X, which runs the analysis).
+// preferences missing → step 2 (Niche).
 export function resumeStepFromStatus(steps: OnboardingStatusSteps): number {
   if (!steps.xAccount) return 0;
-  if (!steps.styleProfile) return 0;
-  if (!steps.preferences) return 1;
+  if (!steps.styleProfile) return 1;
+  if (!steps.preferences) return 2;
 
   return 0;
 }

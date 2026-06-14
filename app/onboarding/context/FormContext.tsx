@@ -4,10 +4,18 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import type { OnboardingStatusSteps } from '@/lib/services/onboarding-status';
 
 /**
- * Generic form data type that can be extended for specific forms
+ * Shape of the onboarding form data collected across the steps.
  */
 export interface FormData {
-  [key: string]: any;
+  niche: string[];
+  postType: string[];
+  // Personalized chips from the X analysis (fall back to defaults when empty).
+  suggestedNiches: string[];
+  suggestedPostTypes: string[];
+  inspirationAccounts: string[];
+  postsPerDay: string;
+  deliveryTime: string;
+  postFormat: string;
 }
 
 /**
@@ -61,13 +69,13 @@ const FormContext = createContext<FormContextType | undefined>(undefined);
 export function FormProvider({
   children,
   steps,
-  initialData = {},
+  initialData,
   initialStep = 0,
   statusSteps,
 }: {
   children: ReactNode;
   steps: FormStep[];
-  initialData?: FormData;
+  initialData: FormData;
   initialStep?: number;
   statusSteps?: OnboardingStatusSteps;
 }) {
@@ -91,7 +99,7 @@ export function FormProvider({
   /**
    * Get data for a specific step
    */
-  const getStepData = (stepId: string): FormData => {
+  const getStepData = (): FormData => {
     // You can customize this to filter data by step if needed
     return formData;
   };
@@ -106,7 +114,8 @@ export function FormProvider({
   };
 
   const goToPreviousStep = () => {
-    if (currentStep > 1) {
+    // Steps 0–2 (Connect X, Analyze X, Niche) are one-way; Back starts at Post Type.
+    if (currentStep > 2) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -118,7 +127,7 @@ export function FormProvider({
   };
 
   const canGoNext = () => currentStep < totalSteps - 1;
-  const canGoPrevious = () => currentStep > 1;
+  const canGoPrevious = () => currentStep > 2;
 
   /**
    * Mark a step as completed

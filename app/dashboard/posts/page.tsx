@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { getSupabaseServerClient } from '@/lib/supabase/server-client'
 import { fetchPosts, fetchPostsToday } from '@/lib/services/posts'
 import type { GeneratedPost, XAccount } from '@/lib/services/posts'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 import { PostCard } from '../components/PostCard'
 
 type PostGroup = { key: string; label: string; posts: GeneratedPost[] }
@@ -78,6 +77,17 @@ function groupPostsByDay(
   return groups
 }
 
+// Highest-scoring post id in a batch (a day group), or null when none scored.
+// Used to surface a "Top pick" marker — advisory only.
+function topPickId(posts: GeneratedPost[]): number | null {
+  let best: GeneratedPost | null = null
+  for (const post of posts) {
+    if (post.engagement_score === null) continue
+    if (!best || post.engagement_score > best.engagement_score!) best = post
+  }
+  return best?.id ?? null
+}
+
 export default async function PostsPage() {
   const supabase = await getSupabaseServerClient()
   const {
@@ -105,7 +115,7 @@ export default async function PostsPage() {
 
   if (list.kind === 'error') {
     return (
-      <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-8 max-w-2xl w-full mx-auto">
+      <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto">
         <p className="text-sm text-destructive text-center">
           Something went wrong loading your posts. Please try again.
         </p>
@@ -125,10 +135,8 @@ export default async function PostsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto">
-      <SidebarTrigger className="md:hidden" />
-
       <header className="flex items-baseline gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Posts</h1>
+        <h1 className="text-2xl max-sm:text-xl font-semibold tracking-tight">Posts</h1>
         {posts.length > 0 && (
           <span className="text-sm text-muted-foreground tabular-nums">
             {posts.length} post{posts.length === 1 ? '' : 's'}
@@ -138,7 +146,9 @@ export default async function PostsPage() {
 
       {posts.length > 0 ? (
         <div className="flex flex-col gap-8">
-          {groups.map((group) => (
+          {groups.map((group) => {
+            const groupTopPickId = topPickId(group.posts)
+            return (
             <section key={group.key} className="flex flex-col gap-3">
               <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 {group.label}
@@ -152,13 +162,18 @@ export default async function PostsPage() {
                       className="break-inside-avoid animate-in fade-in-0 fill-mode-both duration-300 ease-out motion-safe:slide-in-from-bottom-1"
                       style={{ animationDelay: `${delay}ms` }}
                     >
-                      <PostCard post={post} xAccount={xAccount} />
+                      <PostCard
+                        post={post}
+                        xAccount={xAccount}
+                        isTopPick={post.id === groupTopPickId}
+                      />
                     </div>
                   )
                 })}
               </div>
             </section>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">

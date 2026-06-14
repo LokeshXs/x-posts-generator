@@ -22,28 +22,22 @@ type OnboardingDoneProps = {
 
 export function OnboardingDone({
   deliveryTime,
-  postsPerDay,
 }: OnboardingDoneProps) {
   const router = useRouter();
-  const count = Number(postsPerDay) || 1;
-  const postLabel = count === 1 ? 'post' : 'posts';
 
   return (
-    <div className="flex flex-col gap-8 container mx-auto max-w-2/3 w-full">
-      <Card>
-        <CardContent className="flex flex-col items-center gap-6 text-center py-6">
+    <div className="flex flex-col gap-8 mx-auto w-full max-w-6xl">
+      <Card className='min-h-[26rem] sm:min-h-[32rem]'>
+        <CardContent className="flex flex-col justify-center flex-1 items-center gap-6 text-center py-6">
           <div className="flex flex-col gap-2">
-            <h2 className="text-3xl font-bold tracking-tight">
-              You're all <em>set</em>! 🎉
+            <h2 className="text-xl font-bold tracking-tight text-pretty sm:text-3xl">
+              You&rsquo;re all <em>set</em>! 🎉
             </h2>
             <p className="text-muted-foreground">
               Your first posts will be ready by {formatTime(deliveryTime)}{' '}
               tomorrow.
             </p>
-            <p className="text-muted-foreground">
-              We'll analyse today's trends tonight and generate {count}{' '}
-              {postLabel} tailored to your voice and niche.
-            </p>
+           
           </div>
           <Button size="lg" onClick={() => router.push('/dashboard')}>
             Go to dashboard →

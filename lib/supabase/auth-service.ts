@@ -21,6 +21,16 @@ export async function signUp(credentials: SignUpCredentials): Promise<AuthResult
   }
 }
 
+export async function signInWithGoogle(redirectTo = '/onboarding') {
+  const supabase = getSupabaseBrowserClient()
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+    },
+  })
+}
+
 export async function signOut(): Promise<{ error: AuthError | null }> {
   const supabase = getSupabaseBrowserClient()
   const { error } = await supabase.auth.signOut()

@@ -8,9 +8,17 @@ export interface GeneratedPost {
   sources: { url: string; title: string }[]
   angle: string | null
   status: 'pending' | 'approved' | 'scheduled' | 'posted' | 'failed'
+  tweet_id: string | null
+  published_at: string | null
+  scheduled_at: string | null
+  publish_error: string | null
   run_id: string
   generated_at: string
   created_at: string
+  // Relative 0–100 likelihood-to-land score (not a forecast of real metrics).
+  // null = not scored (scoring failed for the batch, or the row predates the
+  // feature). Treat null as "no prediction", never as zero.
+  engagement_score: number | null
 }
 
 export interface XAccount {

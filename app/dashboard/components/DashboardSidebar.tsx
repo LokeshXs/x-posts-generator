@@ -1,15 +1,15 @@
 'use client'
 
+import { useRef, type ForwardRefExoticComponent, type RefAttributes } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion, useReducedMotion } from 'motion/react'
 import {
-  IconArticle,
-  IconBrandX,
-  IconCalendarTime,
-  IconLayoutDashboard,
-  IconSettings,
-  type TablerIcon,
-} from '@tabler/icons-react'
+  LayoutGridIcon,
+  LayoutListIcon,
+  ReplyIcon,
+  SettingsIcon,
+} from '@animateicons/react/lucide'
 
 import {
   Sidebar,
@@ -19,28 +19,91 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { XenithLogo } from '@/components/brand/xenith-logo'
 import { NavUser } from './NavUser'
+
+// Strong ease-out (emil) for the on-load nav stagger.
+const EASE_OUT = [0.23, 1, 0.32, 1] as const
+
+// Shared shape across every @animateicons/react icon — they all expose the same
+// imperative handle and prop set, so we can hold any of them in NAV_ITEMS.
+type AnimatedIconHandle = {
+  startAnimation: () => void
+  stopAnimation: () => void
+}
+
+type AnimatedIcon = ForwardRefExoticComponent<
+  {
+    size?: number
+    duration?: number
+    isAnimated?: boolean
+    color?: string
+    className?: string
+  } & RefAttributes<AnimatedIconHandle>
+>
 
 type NavItem = {
   title: string
   href: string
-  icon: TablerIcon
+  icon: AnimatedIcon
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { title: 'Dashboard', href: '/dashboard', icon: IconLayoutDashboard },
-  { title: 'Posts', href: '/dashboard/posts', icon: IconArticle },
-  { title: 'Schedule', href: '/dashboard/schedule', icon: IconCalendarTime },
-  { title: 'Settings', href: '/dashboard/settings', icon: IconSettings },
+  { title: "Today's posts", href: '/dashboard/todays-posts', icon: LayoutGridIcon },
+  { title: 'All posts', href: '/dashboard/posts', icon: LayoutListIcon },
+  { title: 'Suggested Replies', href: '/dashboard/suggested-replies', icon: ReplyIcon },
+  { title: 'Settings', href: '/dashboard/settings', icon: SettingsIcon },
 ]
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === '/dashboard') return pathname === '/dashboard'
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+// Each icon animates on its own hover by default; we also drive it from the
+// whole row's hover so it plays when the user hovers anywhere on the nav item.
+// On the dashboard's first mount the rows slide in from the left, staggered by
+// their index. (motion.li mirrors SidebarMenuItem — a plain styled <li>.)
+function NavItemLink({
+  item,
+  active,
+  index,
+}: {
+  item: NavItem
+  active: boolean
+  index: number
+}) {
+  const iconRef = useRef<AnimatedIconHandle>(null)
+  const reduce = useReducedMotion()
+  const Icon = item.icon
+
+  return (
+    <motion.li
+      data-slot="sidebar-menu-item"
+      data-sidebar="menu-item"
+      className="group/menu-item relative"
+      initial={{ opacity: 0, x: reduce ? 0 : -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{
+        duration: reduce ? 0 : 0.35,
+        ease: EASE_OUT,
+        delay: reduce ? 0 : index * 0.06,
+      }}
+      onMouseEnter={() => iconRef.current?.startAnimation()}
+      onMouseLeave={() => iconRef.current?.stopAnimation()}
+    >
+      <SidebarMenuButton
+        isActive={active}
+        tooltip={item.title}
+        render={<Link href={item.href} />}
+      >
+        <Icon ref={iconRef} size={18} className="shrink-0" />
+        <span>{item.title}</span>
+      </SidebarMenuButton>
+    </motion.li>
+  )
 }
 
 export function DashboardSidebar() {
@@ -48,15 +111,12 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader >
         <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:justify-center">
-          <Link
+          <XenithLogo
             href="/dashboard"
-            className="flex items-center gap-2 overflow-hidden px-1 font-semibold tracking-tight group-data-[collapsible=icon]:hidden"
-          >
-            <IconBrandX className="size-5 shrink-0" />
-            <span className="truncate">X Posts</span>
-          </Link>
+            className="overflow-hidden px-1 group-data-[collapsible=icon]:hidden"
+          />
           <SidebarTrigger />
         </div>
       </SidebarHeader>
@@ -64,17 +124,13 @@ export function DashboardSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {NAV_ITEMS.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  isActive={isActive(pathname, item.href)}
-                  tooltip={item.title}
-                  render={<Link href={item.href} />}
-                >
-                  <item.icon />
-                  <span>{item.title}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+            {NAV_ITEMS.map((item, index) => (
+              <NavItemLink
+                key={item.href}
+                item={item}
+                active={isActive(pathname, item.href)}
+                index={index}
+              />
             ))}
           </SidebarMenu>
         </SidebarGroup>

@@ -19,6 +19,11 @@ const NICHE_TOPICS = [
 export function NicheStep() {
   const { formData, updateFormData } = useFormContext();
   const selectedTopics: string[] = formData.niche || [];
+  // Use the X-analysis suggestions when present; otherwise fall back to the
+  // default topics (e.g. the user skipped connecting their X account).
+  const topics: string[] = formData.suggestedNiches?.length
+    ? formData.suggestedNiches
+    : NICHE_TOPICS;
 
   const handleTopicToggle = (topic: string) => {
     const isSelected = selectedTopics.includes(topic);
@@ -33,8 +38,8 @@ export function NicheStep() {
     <div className="flex flex-col gap-6 ">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          What's your <em>niche</em>?
+        <h2 className="text-xl font-bold tracking-tight text-pretty sm:text-3xl text-center sm:text-left">
+          What&apos;s your <em>niche</em>?
         </h2>
         <p className="text-muted-foreground">
           Pick the topics you post about. This helps us find the right trends
@@ -45,12 +50,12 @@ export function NicheStep() {
       {/* Topic Chips */}
       <div>
         <div className="flex flex-wrap gap-3">
-          {NICHE_TOPICS.map((topic) => (
+          {topics.map((topic) => (
             <Button
               key={topic}
               onClick={() => handleTopicToggle(topic)}
               variant={selectedTopics.includes(topic) ? 'default' : 'outline'}
-              className="rounded-full"
+              className="rounded-full min-h-11 max-sm:text-xs"
             >
               {topic}
             </Button>

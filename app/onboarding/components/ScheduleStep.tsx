@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { TimePicker, formatTime12 } from '@/components/ui/time-picker';
 
 const POSTS_PER_DAY_OPTIONS = [
   { value: '1', label: '1 post/day' },
@@ -20,11 +20,7 @@ const POSTS_PER_DAY_OPTIONS = [
   { value: '5', label: '5 posts/day' },
 ];
 
-const POST_FORMAT_OPTIONS = [
-  { id: 'single', label: 'Single post' },
-  { id: 'thread', label: 'Thread' },
-  { id: 'mix', label: 'Mix both' },
-];
+
 
 export function ScheduleStep() {
   const { formData, updateFormData } = useFormContext();
@@ -32,33 +28,29 @@ export function ScheduleStep() {
     formData.deliveryTime || '08:00'
   );
   const postsPerDay = formData.postsPerDay || '1';
-  const postFormat = formData.postFormat || 'single';
 
-  const handlePostsPerDayChange = (value: string) => {
+
+  const handlePostsPerDayChange = (value: string | null) => {
+    if (typeof value !== 'string') return;
     updateFormData({
       postsPerDay: value,
     });
   };
 
-  const handleDeliveryTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleDeliveryTimeChange = (value: string) => {
     setDeliveryTime(value);
     updateFormData({
       deliveryTime: value,
     });
   };
 
-  const handlePostFormatChange = (format: string) => {
-    updateFormData({
-      postFormat: format,
-    });
-  };
+
 
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight">
+        <h2 className="text-xl font-bold tracking-tight text-pretty sm:text-3xl text-center sm:text-left">
           Set your <em>schedule</em>
         </h2>
         <p className="text-muted-foreground">
@@ -90,33 +82,13 @@ export function ScheduleStep() {
         <Label htmlFor="delivery-time" className="font-medium">
           Deliver drafts to me at
         </Label>
-        <Input
+        <TimePicker
           id="delivery-time"
-          type="time"
           value={deliveryTime}
           onChange={handleDeliveryTimeChange}
         />
       </div>
 
-      {/* Post format */}
-      <div className="flex flex-col gap-3">
-        <Label className="font-medium">Post format</Label>
-        <div className="flex flex-wrap gap-3">
-          {POST_FORMAT_OPTIONS.map((format) => (
-            <button
-              key={format.id}
-              onClick={() => handlePostFormatChange(format.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
-                postFormat === format.id
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
-              }`}
-            >
-              {format.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Summary */}
       <div className="flex flex-col gap-2 p-4 rounded-lg bg-muted">
@@ -125,11 +97,8 @@ export function ScheduleStep() {
           <li>
             • {postsPerDay} post{postsPerDay !== '1' ? 's' : ''} per day
           </li>
-          <li>• Deliver at {deliveryTime}</li>
-          <li>
-            • Format:{' '}
-            {POST_FORMAT_OPTIONS.find((f) => f.id === postFormat)?.label}
-          </li>
+          <li>• Deliver at {formatTime12(deliveryTime)}</li>
+        
         </ul>
       </div>
     </div>

@@ -1,7 +1,10 @@
 import { cookies } from 'next/headers'
 
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { BackendStatusGate } from '@/components/backend-status-gate'
 import { DashboardSidebar } from './components/DashboardSidebar'
+import { DashboardMobileHeader } from './components/DashboardMobileHeader'
+import { TwitterConnectGate } from './components/TwitterConnectGate'
 
 export default async function DashboardLayout({
   children,
@@ -14,9 +17,15 @@ export default async function DashboardLayout({
   const defaultOpen = cookieStore.get('sidebar_state')?.value !== 'false'
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <DashboardSidebar />
-      <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
+    <BackendStatusGate>
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <DashboardSidebar />
+        <SidebarInset>
+          <TwitterConnectGate />
+          <DashboardMobileHeader />
+          {children}
+        </SidebarInset>
+      </SidebarProvider>
+    </BackendStatusGate>
   )
 }

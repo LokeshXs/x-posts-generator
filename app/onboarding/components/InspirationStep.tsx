@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useFormContext } from '../context/FormContext';
+import { IconX } from '@tabler/icons-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,34 +16,52 @@ export function InspirationStep() {
   const [error, setError] = useState('');
 
   const addAccount = () => {
-    // Strip a leading @ the user may have typed before the username.
-    const normalized = draft.trim().replace(/^@+/, '');
+    // Allow several usernames at once, separated by spaces. Trim each token and
+    // strip a leading @ the user may have typed before the username.
+    const tokens = draft
+      .split(/\s+/)
+      .map((t) => t.trim().replace(/^@+/, ''))
+      .filter(Boolean);
 
-    if (!normalized) {
+    if (tokens.length === 0) {
       setError('Please enter a username.');
       return;
     }
-    if (/\s/.test(normalized)) {
-      setError("Username can't contain spaces.");
-      return;
+
+    const seen = new Set(accounts.map((a) => a.toLowerCase()));
+    const toAdd: string[] = [];
+    const invalid: string[] = [];
+
+    for (const token of tokens) {
+      if (!USERNAME_REGEX.test(token)) {
+        invalid.push(token);
+        continue;
+      }
+      const key = token.toLowerCase();
+      if (seen.has(key)) continue; // skip duplicates (already added or repeated in this batch)
+      seen.add(key);
+      toAdd.push(token);
     }
-    if (!USERNAME_REGEX.test(normalized)) {
-      setError('Use 1–15 letters, numbers, or underscores.');
+
+    if (toAdd.length > 0) {
+      updateFormData({ inspirationAccounts: [...accounts, ...toAdd] });
+    }
+
+    if (invalid.length > 0) {
+      // Keep the rejected tokens in the field so they can be corrected.
+      setDraft(invalid.join(' '));
+      setError(
+        `Couldn't add ${invalid
+          .map((t) => `"${t}"`)
+          .join(', ')} — use 1–15 letters, numbers, or underscores.`,
+      );
       return;
     }
 
-    const isDuplicate = accounts.some(
-      (a) => a.toLowerCase() === normalized.toLowerCase(),
-    );
-    if (isDuplicate) {
-      setError('You already added that account.');
-      setDraft('');
-      return;
-    }
-
-    updateFormData({ inspirationAccounts: [...accounts, normalized] });
     setDraft('');
-    setError('');
+    setError(
+      toAdd.length === 0 ? 'You already added that account.' : '',
+    );
   };
 
   const removeAccount = (name: string) => {
@@ -62,24 +81,25 @@ export function InspirationStep() {
     <div className="flex flex-col gap-6 ">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight">
+        <h2 className="text-xl font-bold tracking-tight text-pretty sm:text-3xl text-center sm:text-left">
           Who <em>inspires</em> you?{' '}
-          <span className="text-base font-normal text-muted-foreground">
+          <span className="text-base max-sm:text-xs font-normal text-muted-foreground">
             (optional)
           </span>
         </h2>
         <p className="text-muted-foreground">
-          Add X accounts whose posts you love — we'll draw inspiration from
+          Add X accounts whose posts you love — we&apos;ll draw inspiration from
           them.
         </p>
       </div>
 
       {/* Username Input */}
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-2 max-w-xl">
+        <div className="flex gap-2 max-sm:flex-col">
           <Input
             type="text"
-            placeholder="@username"
+            aria-label="X username"
+            placeholder="@username…"
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
@@ -87,6 +107,11 @@ export function InspirationStep() {
             }}
             onKeyDown={handleKeyDown}
             aria-invalid={!!error}
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            className=' max-sm:text-sm'
           />
           <Button
             type="button"
@@ -97,12 +122,18 @@ export function InspirationStep() {
             Add
           </Button>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error ? (
+          <p className="text-sm text-destructive">{error}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Add several at once, separated by spaces.
+          </p>
+        )}
       </div>
 
       {/* Added Accounts */}
       {accounts.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 max-w-xl">
           {accounts.map((name) => (
             <Badge key={name} variant="secondary" className="gap-1 pr-1">
               @{name}
@@ -110,9 +141,9 @@ export function InspirationStep() {
                 type="button"
                 onClick={() => removeAccount(name)}
                 aria-label={`Remove @${name}`}
-                className="ml-1 rounded-full p-0.5 hover:bg-background/60"
+                className="ml-0.5 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               >
-                ✕
+                <IconX className="size-3.5" />
               </button>
             </Badge>
           ))}

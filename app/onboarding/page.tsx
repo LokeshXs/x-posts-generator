@@ -5,7 +5,7 @@ import {
   resumeStepFromStatus,
 } from "@/lib/services/onboarding-status";
 import MultistepForm from "./components/MultistepForm";
-import { HealthCheck } from "./components/HealthCheck";
+import { BackendStatusGate } from "@/components/backend-status-gate";
 import { OnboardingStatusError } from "./components/OnboardingStatusError";
 
 export default async function Page() {
@@ -22,8 +22,6 @@ export default async function Page() {
 
   const result = await fetchOnboardingStatus(session.access_token);
 
-  console.log(result);
-
   if (result.kind === "unauthorized") {
     // Cookies can't be mutated from an RSC; /signout is a Route Handler that
     // clears the Supabase session and 307s to /login.
@@ -32,7 +30,7 @@ export default async function Page() {
 
   if (result.kind === "error") {
     return (
-      <main className="min-h-screen flex justify-center items-center bg-background p-4 sm:p-6 md:p-8">
+      <main className="min-h-dvh flex justify-center items-center bg-background p-4 sm:p-6 md:p-8">
         <OnboardingStatusError />
       </main>
     );
@@ -51,12 +49,13 @@ export default async function Page() {
   const initialStep = resumeStepFromStatus(result.data.steps);
 
   return (
-    <main className="min-h-screen flex justify-center items-center bg-background p-4 sm:p-6 md:p-8">
-      <MultistepForm
-        initialStep={initialStep}
-        statusSteps={result.data.steps}
-      />
-      <HealthCheck />
-    </main>
+    <BackendStatusGate>
+      <main className="min-h-dvh flex justify-center items-center bg-background p-4 sm:p-6 md:p-8">
+        <MultistepForm
+          initialStep={initialStep}
+          statusSteps={result.data.steps}
+        />
+      </main>
+    </BackendStatusGate>
   );
 }

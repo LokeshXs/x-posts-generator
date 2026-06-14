@@ -1,14 +1,26 @@
 import { apiClient } from '../api'
 
-export interface TwitterPost {
-  id: string
-  text: string
-  createdAt: string
+export interface TwitterProfileAnalysis {
+  success: boolean
+  x_username: string
+  suggestedNiches: string[] // full list of niche chips to render (≤20)
+  suggestedPostTypes: string[] // full list of post-type chips to render (≤10)
+  preselectedNiches: string[] // subset of suggestedNiches, checked by default
+  preselectedPostTypes: string[] // subset of suggestedPostTypes, checked by default
 }
 
-export interface TwitterPostsResponse {
-  posts: TwitterPost[]
-  meta: { newest_id?: string; oldest_id?: string; result_count: number }
+export interface TwitterStatus {
+  /** Token is valid (refreshed if it was near expiry). When false, the user must (re)connect. */
+  status: boolean
+  /** Whether an X account is linked at all. */
+  connected: boolean
+  /** Connected but the refresh token is dead → must re-authorize. */
+  needsReconnect?: boolean
+}
+
+export async function getTwitterStatus(): Promise<TwitterStatus> {
+  const { data } = await apiClient.get<TwitterStatus>('/twitter/status')
+  return data
 }
 
 export async function getTwitterAuthUrl(redirectTo?: string): Promise<string> {
@@ -18,7 +30,7 @@ export async function getTwitterAuthUrl(redirectTo?: string): Promise<string> {
   return data.authUrl
 }
 
-export async function doTwitterPostsAnalysis(): Promise<TwitterPostsResponse> {
-  const { data } = await apiClient.get<TwitterPostsResponse>('/twitter/twitter-profile-analysis')
+export async function doTwitterPostsAnalysis(): Promise<TwitterProfileAnalysis> {
+  const { data } = await apiClient.get<TwitterProfileAnalysis>('/twitter/twitter-profile-analysis')
   return data
 }
