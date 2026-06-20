@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -34,9 +34,12 @@ export default function LoginPage() {
 function LoginForm() {
   useAuthGuard({ redirectIfAuthenticated: '/onboarding' })
 
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') ?? '/onboarding'
+  const requestedRedirect = searchParams.get('redirectTo')
+  const redirectTo =
+    requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//')
+      ? requestedRedirect
+      : '/onboarding'
 
   const [fields, setFields] = useState<LoginFields>({ email: '', password: '' })
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -67,7 +70,7 @@ function LoginForm() {
     setIsSubmitting(true)
     setFormError(null)
 
-    const { error } = await signIn(fields)
+    const { error, session } = await signIn(fields)
 
     if (error) {
       setFormError(error.message)
@@ -75,7 +78,15 @@ function LoginForm() {
       return
     }
 
-    router.replace(redirectTo)
+    if (!session) {
+      setFormError('Sign-in completed without creating a session. Please try again.')
+      setIsSubmitting(false)
+      return
+    }
+
+    // Use a document navigation so the first protected request is guaranteed
+    // to include the session cookie written by the Supabase browser client.
+    window.location.replace(redirectTo)
   }
 
   return (

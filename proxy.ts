@@ -21,17 +21,32 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   const supabase = getSupabaseMiddlewareClient(request, response)
 
-  // Always use getUser() — validates the JWT server-side, unlike getSession() which only reads the cookie
-  const { data: { user } } = await supabase.auth.getUser()
+  // Validate the JWT claims instead of trusting the cookie contents.
+  // getClaims() can verify asymmetric JWTs locally and refreshes the session
+  // through the middleware client's cookie adapter when necessary.
+  const { data } = await supabase.auth.getClaims()
+  const isAuthenticated = Boolean(data?.claims?.sub)
 
-  if (isProtectedRoute(pathname) && !user) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirectTo', pathname)
-    return NextResponse.redirect(loginUrl)
+  function redirectWithRefreshedCookies(url: URL): NextResponse {
+    const redirectResponse = NextResponse.redirect(url)
+
+    // getClaims() may have refreshed the session. Preserve those Set-Cookie
+    // headers when returning a redirect instead of the original response.
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie)
+    })
+
+    return redirectResponse
   }
 
-  if (isAuthRoute(pathname) && user) {
-    return NextResponse.redirect(new URL('/onboarding', request.url))
+  if (isProtectedRoute(pathname) && !isAuthenticated) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirectTo', pathname)
+    return redirectWithRefreshedCookies(loginUrl)
+  }
+
+  if (isAuthRoute(pathname) && isAuthenticated) {
+    return redirectWithRefreshedCookies(new URL('/onboarding', request.url))
   }
 
   // Return the same response — it carries any refreshed session cookies
