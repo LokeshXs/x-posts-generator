@@ -1,4 +1,5 @@
 import { getSupabaseBrowserClient } from './client'
+import { getPostLoginRoute } from '@/lib/auth/post-login-route'
 import type { AuthResult, AuthError, SignInCredentials, SignUpCredentials, Session, User } from './types'
 
 export async function signIn(credentials: SignInCredentials): Promise<AuthResult> {
@@ -21,7 +22,7 @@ export async function signUp(credentials: SignUpCredentials): Promise<AuthResult
   }
 }
 
-export async function signInWithGoogle(redirectTo = '/onboarding') {
+export async function signInWithGoogle(redirectTo = getPostLoginRoute()) {
   const supabase = getSupabaseBrowserClient()
   return supabase.auth.signInWithOAuth({
     provider: 'google',

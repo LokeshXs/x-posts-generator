@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getPostLoginRoute } from '@/lib/auth/post-login-route'
 import { getSupabaseMiddlewareClient } from '@/lib/supabase/middleware-client'
 
 const PROTECTED_ROUTES = ['/onboarding', '/dashboard']
@@ -46,7 +47,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   if (isAuthRoute(pathname) && isAuthenticated) {
-    return redirectWithRefreshedCookies(new URL('/onboarding', request.url))
+    return redirectWithRefreshedCookies(
+      new URL(getPostLoginRoute(), request.url),
+    )
   }
 
   // Return the same response — it carries any refreshed session cookies

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { getPostLoginRoute } from '@/lib/auth/post-login-route'
 import { signInWithGoogle } from '@/lib/supabase/auth-service'
 
 function GoogleIcon() {
@@ -27,7 +28,11 @@ function GoogleIcon() {
   )
 }
 
-export function GoogleButton({ redirectTo = '/onboarding' }: { redirectTo?: string }) {
+export function GoogleButton({
+  redirectTo = getPostLoginRoute(),
+}: {
+  redirectTo?: string
+}) {
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleClick() {
