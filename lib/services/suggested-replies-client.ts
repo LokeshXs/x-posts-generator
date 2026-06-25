@@ -47,16 +47,6 @@ export async function updateSuggestedReply(
   return data.reply
 }
 
-// POST /api/v1/suggested-replies/:id/publish — posts the reply to X now.
-// Idempotent (re-POSTing a posted reply returns it unchanged); a failed reply
-// can be retried. Returns the full updated row (same shape as PATCH).
-export async function publishSuggestedReply(id: number): Promise<SuggestedReply> {
-  const { data } = await apiClient.post<UpdateSuggestedReplyResponse>(
-    `/suggested-replies/${id}/publish`,
-  )
-  return data.reply
-}
-
 // POST /api/v1/blocked-accounts — blocks the author of a suggested reply so
 // they won't appear in future generation runs. Idempotent (re-blocking returns
 // 201 with the refreshed row). Returns the created/refreshed BlockedAccount.

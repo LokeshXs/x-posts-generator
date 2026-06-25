@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { isAxiosError } from 'axios'
 import {
-  IconAlertTriangle,
   IconCheck,
   IconCopy,
   IconDots,
@@ -41,10 +40,8 @@ import type { XAccount } from '@/lib/services/posts'
 import type { SuggestedReply } from '@/lib/services/suggested-replies'
 import {
   blockAccountFromReply,
-  publishSuggestedReply,
   updateSuggestedReply,
 } from '@/lib/services/suggested-replies-client'
-import { getTwitterAuthUrl } from '@/lib/services/twitter'
 
 const REPLY_MAX_LENGTH = 280
 
@@ -74,14 +71,6 @@ function formatSourceTime(value: string | null): string {
     return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   }
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-// Public URL for a posted reply; falls back to the id-only deep link when we
-// don't know the account's @handle.
-function tweetUrl(tweetId: string, username?: string): string {
-  return username
-    ? `https://x.com/${username}/status/${tweetId}`
-    : `https://x.com/i/web/status/${tweetId}`
 }
 
 function Metric({ icon: Icon, value }: { icon: TablerIcon; value?: number }) {
@@ -146,13 +135,6 @@ export function SuggestedReplyCard({
   const [draft, setDraft] = useState(reply.suggested_reply)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Publish lifecycle — kept in state so the card reflects the new status in
-  // place without the parent needing to refetch.
-  const [status, setStatus] = useState(reply.status)
-  const [tweetId, setTweetId] = useState(reply.tweet_id)
-  const [publishError, setPublishError] = useState(reply.publish_error)
-  const [isPublishing, setIsPublishing] = useState(false)
-
   // Block-account confirmation lifecycle.
   const [confirmBlockOpen, setConfirmBlockOpen] = useState(false)
   const [isBlocking, setIsBlocking] = useState(false)
@@ -215,56 +197,6 @@ export function SuggestedReplyCard({
       toast.error(getErrorMessage(error, 'Failed to update reply'))
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  // On a 403 the X connection lacks the tweet.write scope; route the user back
-  // through the connect flow, returning them to this page afterwards.
-  const reconnectForPosting = async () => {
-    toast.error('Reconnect X to enable posting')
-    try {
-      const url = await getTwitterAuthUrl(window.location.pathname)
-      window.location.href = url
-    } catch (error) {
-      console.error('Failed to start X reconnect:', error)
-      toast.error('Could not start X reconnect. Please try again.')
-    }
-  }
-
-  const handlePublish = async () => {
-    setIsPublishing(true)
-    try {
-      const updated = await publishSuggestedReply(reply.id)
-      setStatus(updated.status)
-      setTweetId(updated.tweet_id)
-      setPublishError(updated.publish_error)
-      onUpdated(updated)
-      toast.success('Reply posted')
-    } catch (error) {
-      const code = isAxiosError(error) ? error.response?.status : undefined
-      if (code === 403) {
-        await reconnectForPosting()
-        return
-      }
-      if (code === 400) {
-        toast.error('Connect your X account to reply')
-      } else if (code === 404) {
-        toast.error('This reply no longer exists')
-      } else if (code === 502) {
-        const data = isAxiosError(error) ? error.response?.data : undefined
-        const message =
-          (data?.publish_error as string | undefined) ??
-          (data?.reply?.publish_error as string | undefined) ??
-          'X rejected this reply'
-        setStatus('failed')
-        setPublishError(message)
-        toast.error(message)
-      } else {
-        console.error('Failed to publish reply:', error)
-        toast.error('Failed to post reply. Please try again.')
-      }
-    } finally {
-      setIsPublishing(false)
     }
   }
 
@@ -408,11 +340,9 @@ export function SuggestedReplyCard({
               )}
               {!isEditing && (
                 <div className="ml-auto flex shrink-0 items-center gap-3">
-                  {status !== 'posted' && (
-                    <IconAction label="Edit reply" onClick={startEditing}>
-                      <IconPencil className="size-4" />
-                    </IconAction>
-                  )}
+                  <IconAction label="Edit reply" onClick={startEditing}>
+                    <IconPencil className="size-4" />
+                  </IconAction>
                   <IconAction label="Copy reply" onClick={copyReply}>
                     {copied ? (
                       <IconCheck className="size-4 text-emerald-500" />
@@ -466,68 +396,6 @@ export function SuggestedReplyCard({
             )}
           </div>
         </div>
-      </div>
-
-      {/* Footer action bar — status-driven (publish-only) */}
-      <div className="mt-3 border-t px-4 pt-3">
-        {status === 'pending' && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handlePublish}
-              disabled={isPublishing || isEditing}
-            >
-              {isPublishing ? 'Posting…' : 'Reply'}
-            </Button>
-          </div>
-        )}
-
-        {status === 'posted' && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-              <IconCheck className="size-4" />
-              Posted
-            </span>
-            {tweetId && (
-              <a
-                href={tweetUrl(tweetId, xAccount?.username)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-xs text-sky-500 transition-colors hover:text-sky-600"
-              >
-                View on X
-                <IconExternalLink className="size-3.5" />
-              </a>
-            )}
-          </div>
-        )}
-
-        {status === 'failed' && (
-          <div className="flex flex-col gap-2">
-            <span className="flex items-start gap-1.5 text-xs text-destructive">
-              <IconAlertTriangle className="mt-0.5 size-4 shrink-0" />
-              {publishError || 'Posting failed.'}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={handlePublish}
-                disabled={isPublishing || isEditing}
-              >
-                {isPublishing ? 'Retrying…' : 'Retry'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={startEditing}
-                disabled={isPublishing || isEditing}
-              >
-                <IconPencil className="size-4" />
-                Edit
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       <AlertDialog open={confirmBlockOpen} onOpenChange={setConfirmBlockOpen}>

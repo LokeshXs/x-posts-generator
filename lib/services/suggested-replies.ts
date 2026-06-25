@@ -30,12 +30,6 @@ export interface SuggestedReply {
   suggested_reply: string // ≤280 chars, same language as the post
   edited: boolean
 
-  // ── publish lifecycle ──
-  status: 'pending' | 'posted' | 'failed'
-  tweet_id: string | null // the published reply's tweet id on X
-  published_at: string | null // ISO 8601, set once posted
-  publish_error: string | null // X's rejection reason when status is "failed"
-
   created_at: string
   updated_at: string
 }

@@ -52,7 +52,7 @@ export function SuggestedRepliesList() {
 
   // Refresh regenerates a fresh batch (slow: AI + X API). On success we write the
   // new batch into the history cache as today's group, so the view — which reads
-  // from the query — and edit/publish patching stay on one source of truth.
+  // from the query — and edit patching stay on one source of truth.
   const generate = useMutation({
     mutationFn: () => generateSuggestedReplies(),
     onSuccess: (res) => {
