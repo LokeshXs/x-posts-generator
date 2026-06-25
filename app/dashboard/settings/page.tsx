@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { getSupabaseServerClient } from '@/lib/supabase/server-client'
+import { fetchBillingStatus } from '@/lib/services/billing'
 import { fetchUserPreferences } from '@/lib/services/preferences'
 import type { UserPreferences } from '@/lib/services/preferences'
 import { SettingsForm } from './SettingsForm'
@@ -27,9 +28,12 @@ export default async function SettingsPage() {
     redirect('/login')
   }
 
-  const result = await fetchUserPreferences(session.access_token)
+  const [result, billing] = await Promise.all([
+    fetchUserPreferences(session.access_token),
+    fetchBillingStatus(session.access_token),
+  ])
 
-  if (result.kind === 'unauthorized') {
+  if (result.kind === 'unauthorized' || billing.kind === 'unauthorized') {
     redirect('/signout')
   }
 
@@ -74,6 +78,7 @@ export default async function SettingsPage() {
       <SettingsForm
         initialPreferences={initialPreferences}
         suggestedNiches={suggestedNiches}
+        replyCredits={billing.kind === 'ok' ? billing.data.reply_credits : null}
       />
     </div>
   )

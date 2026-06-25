@@ -1,4 +1,5 @@
 import type { XAccount } from './posts'
+import type { ReplyCreditSummary } from './billing'
 
 export interface SuggestedReplySourceMetrics {
   like_count?: number
@@ -48,6 +49,8 @@ export interface SuggestedRepliesResponse {
   replies: SuggestedReply[]
   // The connected X account to reply as; null if not connected.
   xAccount: XAccount | null
+  // Current reply-credit balance after this generation request.
+  reply_credits: ReplyCreditSummary
 }
 
 // One calendar day's worth of replies (newest day first across groups).
