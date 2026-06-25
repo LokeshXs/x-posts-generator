@@ -43,7 +43,7 @@ export function TwitterConnectGate() {
         } else {
           setState({
             phase: 'mustConnect',
-            needsReconnect: Boolean(res.needsReconnect) || res.connected,
+            needsReconnect: Boolean(res.needsReconnect),
           })
         }
       })
