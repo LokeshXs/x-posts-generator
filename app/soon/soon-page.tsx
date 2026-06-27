@@ -202,12 +202,7 @@ export function SoonPage() {
 
         
 
-          <motion.div variants={item} className="mt-5 flex flex-col gap-1">
-            <p className="text-sm font-semibold text-foreground">
-              27 June 2026
-            </p>
-           
-          </motion.div>
+         
         </motion.div>
       </main>
 
