@@ -57,6 +57,30 @@ async function syncProfileFromAuthUser(supabase: SupabaseClient) {
   }
 }
 
+async function accessTokenFromSession(
+  supabase: SupabaseClient,
+  exchangedAccessToken: string | undefined,
+): Promise<string | null> {
+  if (exchangedAccessToken) return exchangedAccessToken
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  return session?.access_token ?? null
+}
+
+async function notifyBackendPostLogin(accessToken: string): Promise<void> {
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')
+  if (!backendUrl) return
+
+  await fetch(`${backendUrl}/api/v1/auth/post-login`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  })
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
@@ -68,13 +92,22 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await getSupabaseServerClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       try {
         await syncProfileFromAuthUser(supabase)
       } catch {
         // The database trigger is the primary profile sync path. This callback
         // write is best-effort so auth redirects are not blocked by RLS.
+      }
+      if (!isPasswordRecovery) {
+        try {
+          const accessToken = await accessTokenFromSession(supabase, data.session?.access_token)
+          if (accessToken) await notifyBackendPostLogin(accessToken)
+        } catch {
+          // Backend post-login work is best-effort. The backend retries welcome
+          // email work on later authenticated requests if this call fails.
+        }
       }
       const response = NextResponse.redirect(`${origin}${next}`)
 
