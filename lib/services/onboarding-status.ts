@@ -26,7 +26,6 @@ export async function fetchOnboardingStatus(
       },
     );
     if (res.status === 401) return { kind: "unauthorized" };
-    console.log(res);
     if (!res.ok) return { kind: "error" };
     const data = (await res.json()) as OnboardingStatus;
     return { kind: "ok", data };

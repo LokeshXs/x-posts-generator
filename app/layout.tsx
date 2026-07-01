@@ -75,7 +75,7 @@ export default function RootLayout({
           data-website-id="8defa46b-0d1b-47b5-894a-569b358b48a5"
         />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

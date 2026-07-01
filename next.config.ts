@@ -3,6 +3,18 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async headers() {
     const isProduction = process.env.NODE_ENV === "production";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const connectSources = [
+      "'self'",
+      "https://cloud.umami.is",
+      "https://www.google-analytics.com",
+      "https://vitals.vercel-insights.com",
+      "https://*.supabase.co",
+      "https://growwithxenith.com",
+      "https://api.growwithxenith.com",
+      "http://localhost:3001",
+      ...(apiUrl ? [apiUrl] : []),
+    ];
     const csp = [
       "default-src 'self'",
       "base-uri 'self'",
@@ -13,7 +25,7 @@ const nextConfig: NextConfig = {
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"} https://cloud.umami.is https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com`,
-      "connect-src 'self' https://cloud.umami.is https://www.google-analytics.com https://vitals.vercel-insights.com https://*.supabase.co https://growwithxenith.com https://api.growwithxenith.com http://localhost:3001",
+      `connect-src ${connectSources.join(" ")}`,
       "frame-src 'none'",
       ...(isProduction ? ["upgrade-insecure-requests"] : []),
     ].join("; ");
